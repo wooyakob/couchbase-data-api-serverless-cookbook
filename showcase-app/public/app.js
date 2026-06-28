@@ -87,6 +87,24 @@ function renderInspector(containerId, result, opMeta) {
     if (!result) { container.innerHTML = '<div class="inspector-empty-state"><p style="color:#f87171">Request failed — check console</p></div>'; return; }
 
     const call = result.api_call;
+    if (!call) {
+        container.innerHTML =
+            '<div class="inspector-toolbar">' +
+                '<span class="inspector-title">API Inspector</span>' +
+                '<span class="status-chip err">Error</span>' +
+            '</div>' +
+            '<div class="inspector-body">' +
+                '<div class="block">' +
+                    '<div class="block-header" onclick="toggleBlock(this)">' +
+                        '<span class="block-title" style="color:#f87171">⚠ Error Response</span>' +
+                        '<span class="block-toggle">▾</span>' +
+                    '</div>' +
+                    '<div class="block-content"><pre>' + syntaxHighlight(result.error || result) + '</pre></div>' +
+                '</div>' +
+            '</div>';
+        return;
+    }
+
     const isOk = result.data !== null && result.data !== undefined;
     const statusCode = call.step2 ? call.step2.response_status : call.response_status;
     const totalDuration = call.step1 ? (call.step1.duration_ms + call.step2.duration_ms) : call.duration_ms;
@@ -135,15 +153,12 @@ function renderStep(step, num) {
 
 function renderCallBlock(call) {
     const urlParts = parseUrl(call.url);
-    const headersFiltered = { ...call.headers };
-    delete headersFiltered.Authorization;
-    headersFiltered.Authorization = 'Basic ***';
 
     return `
       <div class="url-display">
-        <span class="url-method"><span class="method-badge method-${call.method.toLowerCase()}">${call.method}</span></span>
+        <span class="url-method"><span class="method-badge method-${escapeHtml(call.method.toLowerCase())}">${escapeHtml(call.method)}</span></span>
         <span class="url-text">
-          <span class="url-scheme">${urlParts.scheme}://</span><span class="url-host">${urlParts.host}</span><span class="url-path">${urlParts.path}</span>
+          <span class="url-scheme">${escapeHtml(urlParts.scheme)}://</span><span class="url-host">${escapeHtml(urlParts.host)}</span><span class="url-path">${escapeHtml(urlParts.path)}</span>
         </span>
       </div>
       ${call.body ? `
@@ -191,7 +206,7 @@ function renderRoutesTable(data) {
         <div class="block-content" style="padding:0;overflow-x:auto">
           <table class="results-table">
             <thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
-            <tbody>${routes.map(r => `<tr>${cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('')}</tr>`).join('')}</tbody>
+            <tbody>${routes.map(r => `<tr>${cols.map(c => `<td>${escapeHtml(r[c] ?? '—')}</td>`).join('')}</tr>`).join('')}</tbody>
           </table>
           ${renderMetrics(data.metrics)}
         </div>
@@ -211,7 +226,7 @@ function renderAirlinesTable(data) {
         <div class="block-content" style="padding:0;overflow-x:auto">
           <table class="results-table">
             <thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
-            <tbody>${airlines.map(a => `<tr>${cols.map(c => `<td>${a[c] ?? '—'}</td>`).join('')}</tr>`).join('')}</tbody>
+            <tbody>${airlines.map(a => `<tr>${cols.map(c => `<td>${escapeHtml(a[c] ?? '—')}</td>`).join('')}</tr>`).join('')}</tbody>
           </table>
           ${renderMetrics(data.metrics)}
         </div>
@@ -224,7 +239,7 @@ function renderHotelsResult(data) {
     let html = `
       <div class="block">
         <div class="block-header" onclick="toggleBlock(this)">
-          <span class="block-title" style="color:var(--purple)">Airport: ${airport.name || airport.id}</span>
+          <span class="block-title" style="color:var(--purple)">Airport: ${escapeHtml(airport.name || airport.id)}</span>
           <span class="block-toggle">▾</span>
         </div>
         <div class="block-content"><pre>${syntaxHighlight(airport)}</pre></div>
@@ -244,7 +259,7 @@ function renderHotelsResult(data) {
         <div class="block-content" style="padding:0;overflow-x:auto">
           <table class="results-table">
             <thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
-            <tbody>${hotels.map(h => `<tr>${cols.map(c => `<td>${c === 'score' ? (h[c] !== undefined ? Number(h[c]).toFixed(4) : '—') : (h[c] ?? '—')}</td>`).join('')}</tr>`).join('')}</tbody>
+            <tbody>${hotels.map(h => `<tr>${cols.map(c => `<td>${c === 'score' ? (h[c] !== undefined ? Number(h[c]).toFixed(4) : '—') : escapeHtml(h[c] ?? '—')}</td>`).join('')}</tr>`).join('')}</tbody>
           </table>
         </div>
       </div>`;
@@ -273,8 +288,20 @@ function parseUrl(url) {
     }
 }
 
+function escapeHtml(val) {
+    if (val === null || val === undefined) return '—';
+    return String(val)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function syntaxHighlight(obj) {
-    const json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+    let json = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+    // Escape HTML entities first so database values cannot inject markup
+    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
         let cls = 'json-number';
         if (/^"/.test(match)) {

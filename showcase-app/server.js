@@ -267,7 +267,25 @@ app.get('/api/airports/:id/hotels/nearby/:distance', async (req, res) => {
             });
         }
 
-        const { lat, lon } = airportResult.body.geo;
+        const geo = airportResult.body?.geo;
+        if (!geo || typeof geo.lat !== 'number' || typeof geo.lon !== 'number') {
+            return res.status(400).json({
+                error: `Airport document '${airportId}' does not contain valid geo-coordinates (lat/lon).`,
+                api_call: {
+                    step1: {
+                        label: 'Get airport coordinates (Document API)',
+                        method: 'GET',
+                        url: docUrl(creds.endpoint, airportId),
+                        headers: { 'Accept': 'application/json', Authorization: 'Basic ***' },
+                        body: null,
+                        response_status: airportResult.status,
+                        duration_ms: airportResult.duration
+                    }
+                }
+            });
+        }
+
+        const { lat, lon } = geo;
 
         // Step 2: FTS geo query
         const ftsQuery = {
