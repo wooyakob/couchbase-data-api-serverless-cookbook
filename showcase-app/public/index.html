@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Couchbase Data API Showcase</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='16' fill='%23EA2328'/><text x='16' y='22' text-anchor='middle' font-size='18' fill='white' font-family='Arial'>C</text></svg>" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo-group">
+        <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="20" fill="#EA2328"/>
+          <ellipse cx="20" cy="20" rx="12" ry="6" fill="none" stroke="white" stroke-width="2"/>
+          <ellipse cx="20" cy="14" rx="12" ry="6" fill="#EA2328" stroke="white" stroke-width="2"/>
+          <line x1="8" y1="14" x2="8" y2="26" stroke="white" stroke-width="2"/>
+          <line x1="32" y1="14" x2="32" y2="26" stroke="white" stroke-width="2"/>
+        </svg>
+        <div>
+          <span class="logo-brand">Couchbase</span>
+          <span class="logo-product">Data API Showcase</span>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-doc">Document API</span>
+        <span class="badge badge-query">Query API</span>
+        <span class="badge badge-fts">FTS API</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <!-- Credentials -->
+      <div class="sidebar-section">
+        <h3 class="sidebar-title">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/></svg>
+          Connection
+        </h3>
+        <div id="conn-status" class="conn-status disconnected">
+          <span class="status-dot"></span>
+          <span class="status-label">Not connected</span>
+        </div>
+        <div class="form-field">
+          <label>Endpoint URL</label>
+          <input id="endpoint" type="text" placeholder="https://your-cluster.cloud.couchbase.com" />
+        </div>
+        <div class="form-field">
+          <label>Username</label>
+          <input id="username" type="text" placeholder="Database username" />
+        </div>
+        <div class="form-field">
+          <label>Password</label>
+          <input id="password" type="password" placeholder="Database password" />
+        </div>
+        <button class="btn btn-primary btn-full" onclick="testConnection()">Test Connection</button>
+      </div>
+
+      <!-- Navigation -->
+      <div class="sidebar-section">
+        <h3 class="sidebar-title">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3A1.5 1.5 0 0 1 15 10.5v3A1.5 1.5 0 0 1 13.5 15h-3A1.5 1.5 0 0 1 9 13.5v-3z"/></svg>
+          API Operations
+        </h3>
+        <nav class="nav-list">
+          <button class="nav-item active" onclick="showSection('document')" data-section="document">
+            <span class="nav-badge nav-badge-doc">CRUD</span>
+            <span>Document API</span>
+          </button>
+          <button class="nav-item" onclick="showSection('query')" data-section="query">
+            <span class="nav-badge nav-badge-query">SQL++</span>
+            <span>Query API</span>
+          </button>
+          <button class="nav-item" onclick="showSection('fts')" data-section="fts">
+            <span class="nav-badge nav-badge-fts">FTS</span>
+            <span>Full-Text Search</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Dataset info -->
+      <div class="sidebar-section sidebar-info">
+        <h3 class="sidebar-title">Dataset</h3>
+        <div class="info-row"><span class="info-label">Bucket</span><code>travel-sample</code></div>
+        <div class="info-row"><span class="info-label">Scope</span><code>inventory</code></div>
+        <div class="info-row"><span class="info-label">Collections</span><code>airport, route, airline, hotel</code></div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+
+      <!-- Document API Section -->
+      <section id="section-document" class="section active">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Document API</h2>
+            <p class="section-desc">Perform key-value CRUD operations on airport documents using Couchbase's REST Document API. Each operation maps directly to a single HTTP call.</p>
+          </div>
+          <span class="api-tag">v1/buckets/{bucket}/scopes/{scope}/collections/{col}/documents/{id}</span>
+        </div>
+
+        <div class="ops-tabs">
+          <button class="op-tab active" onclick="showOp('doc', 'create', this)">Create</button>
+          <button class="op-tab" onclick="showOp('doc', 'get', this)">Get</button>
+          <button class="op-tab" onclick="showOp('doc', 'update', this)">Update</button>
+          <button class="op-tab" onclick="showOp('doc', 'delete', this)">Delete</button>
+        </div>
+
+        <!-- Create -->
+        <div id="doc-op-create" class="op-panel active">
+          <div class="two-col">
+            <div class="col-form">
+              <div class="op-header">
+                <span class="method-badge method-post">POST</span>
+                <span class="op-title">Create Airport</span>
+              </div>
+              <p class="op-desc">Insert a new airport document. The <code>id</code> field becomes the document key.</p>
+              <div class="form-field">
+                <label>Document Body (JSON)</label>
+                <textarea id="create-body" rows="14" spellcheck="false">{
+  "id": "airport_showcase_001",
+  "type": "airport",
+  "airportname": "Showcase International",
+  "city": "San Francisco",
+  "country": "United States",
+  "faa": "SHW",
+  "icao": "KSHW",
+  "tz": "America/Los_Angeles",
+  "geo": {
+    "lat": 37.6189,
+    "lon": -122.3750,
+    "alt": 13
+  }
+}</textarea>
+              </div>
+              <button class="btn btn-primary" onclick="runCreateAirport()">
+                <svg viewBox="0 0 16 16" width="14" fill="currentColor"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+                Create Document
+              </button>
+            </div>
+            <div class="col-inspector">
+              <div id="inspector-doc-create" class="inspector empty">
+                <div class="inspector-empty-state">
+                  <svg viewBox="0 0 24 24" width="40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  <p>Run an operation to see the live API call</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Get -->
+        <div id="doc-op-get" class="op-panel">
+          <div class="two-col">
+            <div class="col-form">
+              <div class="op-header">
+                <span class="method-badge method-get">GET</span>
+                <span class="op-title">Get Airport</span>
+              </div>
+              <p class="op-desc">Retrieve an airport document by its document ID (key-value lookup — no query engine involved).</p>
+              <div class="form-field">
+                <label>Airport Document ID</label>
+                <input id="get-id" type="text" placeholder="e.g. airport_1254 or airport_showcase_001" value="airport_1254" />
+              </div>
+              <button class="btn btn-primary" onclick="runGetAirport()">
+                <svg viewBox="0 0 16 16" width="14" fill="currentColor"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg>
+                Fetch Document
+              </button>
+            </div>
+            <div class="col-inspector">
+              <div id="inspector-doc-get" class="inspector empty">
+                <div class="inspector-empty-state">
+                  <svg viewBox="0 0 24 24" width="40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  <p>Run an operation to see the live API call</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Update -->
+        <div id="doc-op-update" class="op-panel">
+          <div class="two-col">
+            <div class="col-form">
+              <div class="op-header">
+                <span class="method-badge method-put">PUT</span>
+                <span class="op-title">Update Airport</span>
+              </div>
+              <p class="op-desc">Replace an existing airport document entirely. The document must already exist.</p>
+              <div class="form-field">
+                <label>Airport Document ID</label>
+                <input id="update-id" type="text" placeholder="e.g. airport_showcase_001" value="airport_showcase_001" />
+              </div>
+              <div class="form-field">
+                <label>Updated Document Body (JSON)</label>
+                <textarea id="update-body" rows="12" spellcheck="false">{
+  "type": "airport",
+  "airportname": "Showcase International (Updated)",
+  "city": "San Francisco",
+  "country": "United States",
+  "faa": "SHW",
+  "icao": "KSHW",
+  "tz": "America/Los_Angeles",
+  "geo": {
+    "lat": 37.6189,
+    "lon": -122.3750,
+    "alt": 13
+  },
+  "updated": true
+}</textarea>
+              </div>
+              <button class="btn btn-primary" onclick="runUpdateAirport()">
+                <svg viewBox="0 0 16 16" width="14" fill="currentColor"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>
+                Update Document
+              </button>
+            </div>
+            <div class="col-inspector">
+              <div id="inspector-doc-update" class="inspector empty">
+                <div class="inspector-empty-state">
+                  <svg viewBox="0 0 24 24" width="40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  <p>Run an operation to see the live API call</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delete -->
+        <div id="doc-op-delete" class="op-panel">
+          <div class="two-col">
+            <div class="col-form">
+              <div class="op-header">
+                <span class="method-badge method-delete">DELETE</span>
+                <span class="op-title">Delete Airport</span>
+              </div>
+              <p class="op-desc">Remove an airport document by ID. This operation is immediate and cannot be undone.</p>
+              <div class="form-field">
+                <label>Airport Document ID</label>
+                <input id="delete-id" type="text" placeholder="e.g. airport_showcase_001" value="airport_showcase_001" />
+              </div>
+              <div class="warning-box">
+                <svg viewBox="0 0 16 16" width="14" fill="currentColor"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
+                This permanently deletes the document from Couchbase.
+              </div>
+              <button class="btn btn-danger" onclick="runDeleteAirport()">
+                <svg viewBox="0 0 16 16" width="14" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                Delete Document
+              </button>
+            </div>
+            <div class="col-inspector">
+              <div id="inspector-doc-delete" class="inspector empty">
+                <div class="inspector-empty-state">
+                  <svg viewBox="0 0 24 24" width="40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  <p>Run an operation to see the live API call</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Query API Section -->
+      <section id="section-query" class="section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Query API (SQL++)</h2>
+            <p class="section-desc">Execute SQL++ (N1QL) queries against Couchbase collections. The Query API lets you join collections, filter, aggregate, and sort — all over HTTP with no SDK required.</p>
+          </div>
+          <span class="api-tag">/_p/query/query/service</span>
+        </div>
+
+        <div class="ops-tabs">
+          <button class="op-tab active" onclick="showOp('query', 'routes', this)">Routes</button>
+          <button class="op-tab" onclick="showOp('query', 'airlines', this)">Airlines</button>
+        </div>
+
+        <!-- Routes -->
+        <div id="query-op-routes" class="op-panel active">
+          <div class="two-col">
+            <div class="col-form">
+              <div class="op-header">
+                <span class="method-badge method-post">POST</span>
+                <span class="op-title">Find Airport Routes</span>
+              </div>
+              <p class="op-desc">Query all flight routes (incoming and outgoing) for a given airport using its FAA or ICAO code.</p>
+              <div class="form-field">
+                <label>Airport Code (FAA/ICAO)</label>
+                <input id="routes-code" type="text" placeholder="e.g. SFO, LAX, JFK" value="SFO" />
+              </div>
+              <div class="form-field">
+                <label>Result Limit</label>
+                <input id="routes-limit" type="number" value="10" min="1" max="50" />
+              </div>
+              <div class="query-preview">
+                <div class="query-preview-label">SQL++ Statement</div>
+                <pre id="routes-query-preview">SELECT r.*
+FROM `travel-sample`.`inventory`.route r
+WHERE r.sourceairport = $code
+   OR r.destinationairport = $code
+ORDER BY r.sourceairport, r.destinationairport
+LIMIT 10</pre>
+              </div>
+              <button class="btn btn-primary" onclick="runGetRoutes()">
+                <svg viewBox="0 0 16 16" width="14" fill="currentColor"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
+                Execute Query
+              </button>
+            </div>
+            <div class="col-inspector">
+              <div id="inspector-query-routes" class="inspector empty">
+                <div class="inspector-empty-state">
+                  <svg viewBox="0 0 24 24" width="40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  <p>Run a query to see the live API call</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Airlines -->
+        <div id="query-op-airlines" class="op-panel">
+          <div class="two-col">
+            <div class="col-form">
+              <div class="op-header">
+                <span class="method-badge method-post">POST</span>
+                <span class="op-title">Find Airlines at Airport</span>
+              </div>
+              <p class="op-desc">JOIN routes with airline documents to find all airlines operating at an airport — a cross-collection SQL++ JOIN.</p>
+              <div class="form-field">
+                <label>Airport Code (FAA/ICAO)</label>
+                <input id="airlines-code" type="text" placeholder="e.g. SFO, LAX, JFK" value="SFO" />
+              </div>
+              <div class="query-preview">
+                <div class="query-preview-label">SQL++ Statement (JOIN)</div>
+                <pre>SELECT DISTINCT al.name, al.iata, al.icao, al.country
+FROM `travel-sample`.`inventory`.route r
+JOIN `travel-sample`.`inventory`.airline al
+  ON r.airlineid = META(al).id
+WHERE r.sourceairport = $code
+   OR r.destinationairport = $code
+ORDER BY al.name LIMIT 20</pre>
+              </div>
+              <button class="btn btn-primary" onclick="runGetAirlines()">
+                <svg viewBox="0 0 16 16" width="14" fill="currentColor"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
+                Execute Query
+              </button>
+            </div>
+            <div class="col-inspector">
+              <div id="inspector-query-airlines" class="inspector empty">
+                <div class="inspector-empty-state">
+                  <svg viewBox="0 0 24 24" width="40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  <p>Run a query to see the live API call</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FTS Section -->
+      <section id="section-fts" class="section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Full-Text Search API</h2>
+            <p class="section-desc">Geo-spatial search powered by Couchbase FTS. Find hotels within a configurable radius of any airport — using the airport's coordinates fetched via the Document API, then passed to the FTS geo-distance query.</p>
+          </div>
+          <span class="api-tag">/_p/fts/api/bucket/{b}/scope/{s}/index/{i}/query</span>
+        </div>
+
+        <div class="two-col">
+          <div class="col-form">
+            <div class="op-header">
+              <span class="method-badge method-post">POST</span>
+              <span class="op-title">Find Hotels Near Airport</span>
+            </div>
+            <p class="op-desc">Two-step operation: first fetches airport coordinates via Document API, then runs a geo-distance FTS query against the <code>hotel-geo-index</code>.</p>
+
+            <div class="fts-steps">
+              <div class="fts-step">
+                <span class="step-num">1</span>
+                <div>
+                  <strong>Document API</strong>
+                  <p>GET airport doc → extract <code>geo.lat</code>, <code>geo.lon</code></p>
+                </div>
+              </div>
+              <div class="fts-step-arrow">→</div>
+              <div class="fts-step">
+                <span class="step-num">2</span>
+                <div>
+                  <strong>FTS API</strong>
+                  <p>POST geo-distance query → sorted hotel hits</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label>Airport Document ID</label>
+              <input id="fts-airport-id" type="text" placeholder="e.g. airport_1254" value="airport_1254" />
+            </div>
+            <div class="form-field">
+              <label>Search Radius</label>
+              <div class="distance-group">
+                <input id="fts-distance-val" type="number" value="5" min="1" max="500" />
+                <select id="fts-distance-unit">
+                  <option value="km" selected>km</option>
+                  <option value="mi">miles</option>
+                  <option value="m">meters</option>
+                </select>
+              </div>
+            </div>
+            <div class="query-preview">
+              <div class="query-preview-label">FTS Query Shape</div>
+              <pre>{
+  "query": {
+    "location": { "lat": &lt;from airport&gt;, "lon": &lt;from airport&gt; },
+    "distance": "5km",
+    "field": "geo"
+  },
+  "sort": [{ "by": "geo_distance", "field": "geo", "unit": "km" }],
+  "fields": ["*"],
+  "size": 20
+}</pre>
+            </div>
+            <div class="fts-prereq">
+              <svg viewBox="0 0 16 16" width="14" fill="currentColor"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
+              Requires the <code>hotel-geo-index</code> FTS index. Run <code>scripts/create-fts-index.js</code> to create it.
+            </div>
+            <button class="btn btn-primary" onclick="runFTSSearch()">
+              <svg viewBox="0 0 16 16" width="14" fill="currentColor"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/></svg>
+              Search Nearby Hotels
+            </button>
+          </div>
+          <div class="col-inspector">
+            <div id="inspector-fts" class="inspector empty">
+              <div class="inspector-empty-state">
+                <svg viewBox="0 0 24 24" width="40" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <p>Run a search to see the live API calls</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
